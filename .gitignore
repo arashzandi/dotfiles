@@ -1,0 +1,24 @@
+# Secrets and credentials
+.env.secrets
+
+# AWS SSO/CLI caches and VPN client config regenerate on login; contain live tokens
+.aws/sso/
+.aws/cli/cache/
+.aws/vpn/
+
+# dbt Cloud token + Postgres passwords
+.dbt/dbt_cloud.yml
+.dbt/profiles.yml
+.dbt/cloud-cli/
+
+# MCP server config (Mongo URI + API headers with embedded credentials)
+mcp.json
+
+# Claude Code local app state/telemetry (large, regenerates, not meant to be synced)
+.claude.json
+.claude.json.backup
+.claude.json.tmp.*
+
+# ZSH runtime files (don't sync these)
+.zsh_history
+.zsh_sessions/
