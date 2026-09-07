@@ -658,88 +658,33 @@ for p in results:
   if [[ "$skip_vpn" == false ]]; then
     echo "→ [3/3] AWS VPN Client"
 
-    # Open app if not running
-    if ! pgrep -f "AWS VPN Client" > /dev/null 2>&1; then
-      echo "  Opening AWS VPN Client..."
+    local vpn_cli="/usr/local/bin/aws-vpn-client"
+    local vpn_profile="deed"
+
+    if [[ ! -x "$vpn_cli" ]]; then
+      # Fallback: just open the app for manual connect if the CLI isn't installed
+      echo "  ✗ $vpn_cli not found — opening app for manual connect"
       open "/Applications/AWS VPN Client/AWS VPN Client.app"
-      sleep 2
+    else
+      local vpn_status
+      vpn_status=$("$vpn_cli" get-connection-status --profile-name "$vpn_profile" 2>/dev/null \
+        | python3 -c 'import json,sys; print(json.load(sys.stdin).get("connection-status",""))' 2>/dev/null)
+
+      if [[ "$vpn_status" == "Connected" ]]; then
+        echo "  ✓ VPN already connected ($vpn_profile)"
+      else
+        echo "  Connecting VPN ($vpn_profile)... this may open a browser for SAML SSO"
+        # The AWS VPN Client GUI is Electron-based and exposes no accessible
+        # button names, so AppleScript UI clicking (the old approach) can never
+        # reliably find/click "Connect". The CLI talks to the same daemon directly.
+        if "$vpn_cli" connect --profile-name "$vpn_profile"; then
+          echo "  ✓ VPN connection initiated ($vpn_profile)"
+        else
+          echo "  ✗ Could not connect VPN via CLI — falling back to opening the app"
+          open "/Applications/AWS VPN Client/AWS VPN Client.app"
+        fi
+      fi
     fi
-
-    # Auto-connect to deed profile via AppleScript
-    local vpn_result
-    vpn_result=$(osascript -e '
-      tell application "AWS VPN Client" to activate
-      delay 1
-      tell application "System Events"
-        tell process "AWS VPN Client"
-          -- Dismiss any error popup/sheet before proceeding
-          try
-            set winCount to count of windows
-            if winCount > 1 then
-              -- Extra window is likely an error dialog; close it
-              repeat with w in (windows 2 thru winCount)
-                try
-                  click (first button of w whose subrole is "AXCloseButton")
-                on error
-                  -- Try clicking OK/Close/Dismiss button in the dialog
-                  repeat with btn in (buttons of w)
-                    try
-                      set btnName to name of btn
-                      if btnName is in {"OK", "Close", "Dismiss", "Got it"} then
-                        click btn
-                        exit repeat
-                      end if
-                    end try
-                  end repeat
-                end try
-              end repeat
-              delay 0.5
-            end if
-          end try
-          -- Also check for a sheet (modal error) on the main window
-          try
-            set s to sheet 1 of window 1
-            repeat with btn in (buttons of s)
-              try
-                set btnName to name of btn
-                if btnName is in {"OK", "Close", "Dismiss", "Got it"} then
-                  click btn
-                  delay 0.5
-                  exit repeat
-                end if
-              end try
-            end repeat
-          end try
-          tell window 1
-            set allElements to entire contents
-            -- Check if already connected
-            repeat with elem in allElements
-              try
-                if (class of elem is button) and (name of elem is "Disconnect") then
-                  return "already_connected"
-                end if
-              end try
-            end repeat
-            -- Click Connect
-            repeat with elem in allElements
-              try
-                if (class of elem is button) and (name of elem is "Connect") then
-                  click elem
-                  return "connecting"
-                end if
-              end try
-            end repeat
-          end tell
-        end tell
-      end tell
-      return "not_found"
-    ' 2>&1)
-
-    case "$vpn_result" in
-      already_connected) echo "  ✓ VPN already connected (deed)" ;;
-      connecting)        echo "  ✓ VPN connection initiated (deed)" ;;
-      *)                 echo "  ✗ Could not auto-connect: $vpn_result" ;;
-    esac
     echo ""
   else
     echo "→ [3/3] AWS VPN Client — skipped"
