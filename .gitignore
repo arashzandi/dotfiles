@@ -1,5 +1,6 @@
 # Secrets and credentials
 .env.secrets
+.keeper_import.csv
 
 # AWS SSO/CLI caches and VPN client config regenerate on login; contain live tokens
 .aws/sso/
