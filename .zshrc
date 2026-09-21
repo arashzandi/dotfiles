@@ -184,6 +184,41 @@ if [[ -f ~/Documents/DOTFILES/.env.secrets ]]; then
   source ~/Documents/DOTFILES/.env.secrets
 fi
 
+# Diff .env.secrets vs .env.secrets.example so a var added to one
+# never silently goes missing from the other.
+secrets-drift() {
+  local dir="$HOME/Documents/DOTFILES"
+  local actual="$dir/.env.secrets"
+  local example="$dir/.env.secrets.example"
+
+  if [[ ! -f "$actual" ]]; then
+    echo "secrets-drift: $actual not found" >&2
+    return 1
+  fi
+
+  local actual_vars example_vars missing_from_example missing_from_actual
+  actual_vars=$(grep -oE '^\s*#?\s*export [A-Z_]+=' "$actual" | grep -oE '[A-Z_]+' | sort -u)
+  example_vars=$(grep -oE '^\s*#?\s*export [A-Z_]+=' "$example" | grep -oE '[A-Z_]+' | sort -u)
+
+  missing_from_example=$(comm -23 <(echo "$actual_vars") <(echo "$example_vars"))
+  missing_from_actual=$(comm -13 <(echo "$actual_vars") <(echo "$example_vars"))
+
+  if [[ -z "$missing_from_example" && -z "$missing_from_actual" ]]; then
+    echo "secrets-drift: .env.secrets and .env.secrets.example are in sync"
+    return 0
+  fi
+
+  if [[ -n "$missing_from_example" ]]; then
+    echo "In .env.secrets but missing from .env.secrets.example:"
+    echo "$missing_from_example" | sed 's/^/  /'
+  fi
+  if [[ -n "$missing_from_actual" ]]; then
+    echo "In .env.secrets.example but missing from .env.secrets:"
+    echo "$missing_from_actual" | sed 's/^/  /'
+  fi
+  return 1
+}
+
 # Profile Management Function
 set_profile() {
   local profile=$1
