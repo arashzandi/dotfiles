@@ -13,6 +13,12 @@ from this repo must obtain them separately.
   profile-switching (`set_profile`/`profile`), DB CLI wrappers
   (`claude-psql`, `claude-mongosh`, `claude-aws`), a dev-session bootstrap
   (`init`), an AWS security-group `whitelist` helper, and `secrets-drift`.
+- `bin/claude-mongosh`, `bin/claude-psql` — standalone DB-access wrapper
+  scripts. They read connection URIs from `~/Documents/DOTFILES/.env.secrets`
+  at runtime (no hardcoded paths or secrets). The platform's `CLAUDE.md`
+  expects them to be runnable as `./claude-mongosh <profile>` from
+  `~/Projects`, so they must be linked into that directory — see step 7 of
+  the new-machine setup.
 - `Brewfile` — `brew bundle --file Brewfile` installs everything.
 - `.aws/config` — AWS SSO profile definitions (no static credentials).
 - `.dbt/.user.yml` — anonymous dbt telemetry ID, harmless.
@@ -48,6 +54,15 @@ machine, not synced via git.
    reconnect the VPN client — both regenerate their own local state.
 6. Re-create `.dbt/dbt_cloud.yml`, `.dbt/profiles.yml`, and `mcp.json`
    manually; they're gitignored because they embed live tokens/passwords.
+7. Link the DB wrapper scripts into `~/Projects` so they're runnable as
+   `./claude-mongosh <profile>` / `./claude-psql <profile>` from there
+   (the platform `CLAUDE.md` expects them at that path):
+
+   ```
+   mkdir -p ~/Projects
+   ln -sf ~/Documents/DOTFILES/bin/claude-mongosh ~/Projects/claude-mongosh
+   ln -sf ~/Documents/DOTFILES/bin/claude-psql ~/Projects/claude-psql
+   ```
 
 ## Adding a new secret
 
