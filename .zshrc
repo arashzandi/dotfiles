@@ -537,6 +537,10 @@ claude-aws() {
 }
 
 # Dev Session Init Function
+# Cloudflare WARP/Gateway intercepts TLS with its own CA; AWS CLI (bundled Python) doesn't use the macOS keychain.
+# Bundle = system roots + Cloudflare Gateway CA (rebuild if WARP cert rotates: see ~/.aws/certs)
+[[ -f "$HOME/.aws/certs/ca-bundle.pem" ]] && export AWS_CA_BUNDLE="$HOME/.aws/certs/ca-bundle.pem"
+
 # Logs into AWS SSO + Atlas, whitelists current IP in Atlas projects, and opens VPN
 init() {
   echo "========================================="
@@ -729,6 +733,19 @@ for p in results:
   echo "========================================="
   echo "  Init complete!"
   echo "========================================="
+}
+
+# Generate ~/.dbt/dbt_cloud.yml from template + DBT_CLOUD_CLI_TOKEN env var.
+# Run after filling in project/account IDs in the template, or after token rotation.
+gen-dbt-cloud() {
+  local template="$HOME/Documents/DOTFILES/dbt_cloud.yml.template"
+  local out="$HOME/.dbt/dbt_cloud.yml"
+  if [[ -z "$DBT_CLOUD_CLI_TOKEN" ]]; then
+    echo "gen-dbt-cloud: DBT_CLOUD_CLI_TOKEN is not set (check .env.secrets)" >&2
+    return 1
+  fi
+  envsubst '${DBT_CLOUD_CLI_TOKEN}' < "$template" > "$out"
+  echo "✓ $out generated"
 }
 
 # Resume prior Claude Code context cheaply via a handoff checkpoint,

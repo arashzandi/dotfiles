@@ -28,9 +28,10 @@ brew "dbt-labs/dbt-cli/dbt"
 
 # --- Casks (Applications) ---
 cask "1password"
+cask "aws-vpn-client"
 cask "beekeeper-studio"
 cask "claude"
-cask "claude-code@latest"
+cask "claude-code"
 cask "cursor"
 cask "cyberduck"
 cask "dbeaver-community"
@@ -59,11 +60,3 @@ mas "Numbers", id: 409203825
 mas "Pages", id: 409201541
 mas "Telegram", id: 747648890
 mas "WhatsApp", id: 310633997
-
-# --- VS Code Extensions ---
-vscode "anthropic.claude-code"
-vscode "donjayamanne.githistory"
-vscode "eamodio.gitlens"
-vscode "github.vscode-pull-request-github"
-vscode "tomoki1207.pdf"
-vscode "yzane.markdown-pdf"
