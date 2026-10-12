@@ -1,0 +1,20 @@
+version: "1"
+context:
+  active-project: "production"
+  active-host: "https://cloud.getdbt.com"
+projects:
+  - project-name: production
+    project-id: "TODO_PROD_PROJECT_ID"
+    account-id: "TODO_ACCOUNT_ID"
+    token-name: cloud-cli-0e86
+    token-value: "${DBT_CLOUD_CLI_TOKEN}"
+  - project-name: demo
+    project-id: "TODO_DEMO_PROJECT_ID"
+    account-id: "TODO_ACCOUNT_ID"
+    token-name: cloud-cli-0e86
+    token-value: "${DBT_CLOUD_CLI_TOKEN}"
+  - project-name: testing
+    project-id: "TODO_TESTING_PROJECT_ID"
+    account-id: "TODO_ACCOUNT_ID"
+    token-name: cloud-cli-0e86
+    token-value: "${DBT_CLOUD_CLI_TOKEN}"
