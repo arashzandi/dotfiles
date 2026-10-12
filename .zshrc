@@ -74,6 +74,16 @@ plugins=(git)
 
 source $ZSH/oh-my-zsh.sh
 
+# Prefix history search: type the start of a command, press Up/Down to cycle
+# through past commands that begin with what you've typed (cursor stays at end).
+autoload -U up-line-or-beginning-search down-line-or-beginning-search
+zle -N up-line-or-beginning-search
+zle -N down-line-or-beginning-search
+bindkey "^[[A" up-line-or-beginning-search     # Up
+bindkey "^[OA" up-line-or-beginning-search     # Up (application mode)
+bindkey "^[[B" down-line-or-beginning-search   # Down
+bindkey "^[OB" down-line-or-beginning-search   # Down (application mode)
+
 # User configuration
 
 # export MANPATH="/usr/local/man:$MANPATH"

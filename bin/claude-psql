@@ -1,0 +1,86 @@
+#!/bin/zsh
+
+# Claude PostgreSQL Shell Wrapper
+# This script ensures consistent PostgreSQL connections without shell function dependencies
+
+# Source the .zshrc to get all functions and environment variables
+source ~/.zshrc 2>/dev/null
+
+# Additionally source the secrets file if it exists and PostgreSQL URIs are not set
+if [[ -f ~/Documents/DOTFILES/.env.secrets ]]; then
+    source ~/Documents/DOTFILES/.env.secrets 2>/dev/null
+fi
+
+# Check if the _get_profile_uri function is available
+if ! type _get_profile_uri >/dev/null 2>&1; then
+    echo "Error: Required configuration not found. Please ensure your .zshrc is properly configured." >&2
+    exit 1
+fi
+
+# Check if PostgreSQL URIs are available
+if [[ -z "$PRODUCTION_DB_URI" && -z "$TESTING_DB_URI" ]]; then
+    echo "Error: PostgreSQL connection strings not found." >&2
+    echo "" >&2
+    echo "To fix this issue, ensure that:" >&2
+    echo "1. The file ~/Documents/DOTFILES/.env.secrets exists and contains PostgreSQL URIs" >&2
+    echo "2. Or set the following environment variables:" >&2
+    echo "   - PRODUCTION_DB_URI" >&2
+    echo "   - TESTING_DB_URI" >&2
+    echo "   - DEMO_DB_URI (optional)" >&2
+    echo "   - DEVELOPMENT_DB_URI (optional)" >&2
+    exit 1
+fi
+
+# Check if we have at least one argument (the profile)
+if [[ $# -lt 1 ]]; then
+    echo "Usage: claude-psql <profile> [psql arguments]"
+    echo ""
+    echo "Examples:"
+    echo "  claude-psql production"
+    echo "  claude-psql production -c 'SELECT COUNT(*) FROM main.users;'"
+    echo "  claude-psql testing -f query.sql"
+    echo ""
+    echo "Available profiles: production, testing, demo, development"
+    echo ""
+    echo "Note: You can also use shortcuts: prod, test, dev"
+    exit 1
+fi
+
+# Get the profile from the first argument
+profile=$1
+shift
+
+# Get the PostgreSQL URI for the specified profile
+uri=$(_get_profile_uri "$profile" "postgres")
+
+# Check if we got a valid URI
+if [[ -z "$uri" ]]; then
+    echo "Error: Unknown profile '$profile'" >&2
+    echo "Available profiles: production, testing, demo, development" >&2
+    echo "Shortcuts: prod, test, dev" >&2
+    exit 1
+fi
+
+# Ensure psql is available
+if ! command -v psql >/dev/null 2>&1; then
+    # Try common locations for psql
+    if [[ -x /opt/homebrew/opt/libpq/bin/psql ]]; then
+        PSQL="/opt/homebrew/opt/libpq/bin/psql"
+    elif [[ -x /opt/homebrew/bin/psql ]]; then
+        PSQL="/opt/homebrew/bin/psql"
+    elif [[ -x /usr/local/bin/psql ]]; then
+        PSQL="/usr/local/bin/psql"
+    elif [[ -x /usr/bin/psql ]]; then
+        PSQL="/usr/bin/psql"
+    else
+        echo "Error: psql not found. Please install PostgreSQL client." >&2
+        echo "On macOS: brew install libpq" >&2
+        exit 1
+    fi
+else
+    PSQL="psql"
+fi
+
+# Connect to PostgreSQL with the URI
+echo "Connecting to PostgreSQL ($profile environment)..." >&2
+POSTGRES_URI="$uri" $PSQL "$uri" "$@"

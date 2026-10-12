@@ -1,0 +1,98 @@
+#!/bin/zsh
+
+# Claude MongoDB Shell Wrapper
+# This script ensures consistent MongoDB connections without shell function dependencies
+
+# Source the .zshrc to get all functions and environment variables
+# Disable terminal title hooks to prevent escape sequences in output
+DISABLE_AUTO_TITLE="true"
+source ~/.zshrc 2>/dev/null
+# Clear any precmd/preexec hooks that emit terminal escape sequences
+precmd_functions=()
+preexec_functions=()
+
+# Additionally source the secrets file if it exists and MongoDB URIs are not set
+if [[ -f ~/Documents/DOTFILES/.env.secrets ]]; then
+    source ~/Documents/DOTFILES/.env.secrets 2>/dev/null
+fi
+
+# Check if the _get_profile_uri function is available
+if ! type _get_profile_uri >/dev/null 2>&1; then
+    echo "Error: Required configuration not found. Please ensure your .zshrc is properly configured." >&2
+    exit 1
+fi
+
+# Check if MongoDB URIs are available
+if [[ -z "$PRODUCTION_MONGO_URI" && -z "$TESTING_MONGO_URI" ]]; then
+    echo "Error: MongoDB connection strings not found." >&2
+    echo "" >&2
+    echo "To fix this issue, ensure that:" >&2
+    echo "1. The file ~/Documents/DOTFILES/.env.secrets exists and contains MongoDB URIs" >&2
+    echo "2. Or set the following environment variables:" >&2
+    echo "   - PRODUCTION_MONGO_URI" >&2
+    echo "   - TESTING_MONGO_URI" >&2
+    echo "   - DEMO_MONGO_URI (optional)" >&2
+    echo "   - DEVELOPMENT_MONGO_URI (optional)" >&2
+    exit 1
+fi
+
+# Check if we have at least one argument (the profile)
+if [[ $# -lt 1 ]]; then
+    echo "Usage: claude-mongosh <profile> [mongosh arguments]"
+    echo ""
+    echo "Examples:"
+    echo "  claude-mongosh production"
+    echo "  claude-mongosh production --quiet --eval 'show dbs'"
+    echo "  claude-mongosh testing --eval 'use deedserver; db.users.countDocuments()'"
+    echo ""
+    echo "Available profiles: production, backup, testing, demo, development"
+    echo ""
+    echo "Note: You can also use shortcuts: prod, test, dev"
+    exit 1
+fi
+
+# Get the profile from the first argument
+profile=$1
+shift
+
+# Get the MongoDB URI for the specified profile
+uri=$(_get_profile_uri "$profile" "mongo")
+
+# Check if we got a valid URI
+if [[ -z "$uri" ]]; then
+    echo "Error: Unknown profile '$profile'" >&2
+    echo "Available profiles: production, backup, testing, demo, development" >&2
+    echo "Shortcuts: prod, test, dev" >&2
+    exit 1
+fi
+
+# Ensure mongosh is available
+if ! command -v mongosh >/dev/null 2>&1; then
+    # Try common locations for mongosh
+    if [[ -x /opt/homebrew/bin/mongosh ]]; then
+        MONGOSH="/opt/homebrew/bin/mongosh"
+    elif [[ -x /usr/local/bin/mongosh ]]; then
+        MONGOSH="/usr/local/bin/mongosh"
+    else
+        echo "Error: mongosh not found. Please install MongoDB Shell (mongosh)." >&2
+        echo "Visit: https://www.mongodb.com/try/download/shell" >&2
+        exit 1
+    fi
+else
+    MONGOSH="mongosh"
+fi
+
+# Rewrite --eval arguments: replace "use <db>;" with db.getSiblingDB("<db>");
+# The mongosh "use" command swallows output of subsequent statements in the same --eval string
+args=()
+for arg in "$@"; do
+    if [[ "${args[-1]:-}" == "--eval" ]]; then
+        # Replace "use <dbname>;" or "use <dbname>\n" with getSiblingDB equivalent
+        arg=$(echo "$arg" | sed -E 's/use ([a-zA-Z0-9_-]+)[[:space:]]*;/db = db.getSiblingDB("\1");/g')
+    fi
+    args+=("$arg")
+done
+
+# Connect to MongoDB with the URI
+echo "Connecting to MongoDB ($profile environment)..." >&2
+MONGO_URI="$uri" $MONGOSH "$uri" "${args[@]}"
