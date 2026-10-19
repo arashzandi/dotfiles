@@ -5,6 +5,7 @@ tap "dbt-labs/dbt-cli"
 
 # --- Formulas (CLI Tools) ---
 brew "awscli"
+brew "coreutils"
 brew "direnv"
 brew "gh"
 brew "git"
